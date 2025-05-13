@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Callback</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        input, button { padding: 6px 10px; margin: 4px 0; }
+        ul { padding-left: 18px; }
+        li { margin-bottom: 6px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h2>Kirjautuminen onnistui</h2>
+    <p id="status">Käsitellään...</p>
+
+    <section id="apiArea" class="hidden">
+        <h3>Tuotteet</h3>
+        <button id="loadBtn">Hae tuotteet</button>
+        <ul id="productsList"></ul>
+
+        <h4>Lisää uusi tuote</h4>
+        <input id="prodName" placeholder="Nimi" />
+        <input id="prodPrice" placeholder="Hinta €" type="number" step="0.01" />
+        <button id="addBtn">Tallenna</button>
+    </section>
+
+    <script>
+        // ===== OAuth helper =====
+        function getQueryParam(name) {
+            return new URLSearchParams(window.location.search).get(name);
+        }
+
+        async function exchangeCodeForToken(code) {
+            const data = new URLSearchParams({
+                client_id: "490439995551-n1pm61l6p43f4uqq31rro48oimt7sj7h.apps.googleusercontent.com",
+                client_secret: "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",
+                code,
+                grant_type: "authorization_code",
+                redirect_uri: "http://localhost:5500/afterlogin.html"
+            });
+
+            try {
+                const res = await fetch("https://oauth2.googleapis.com/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: data
+                });
+                const tokenInfo = await res.json();
+
+                if (tokenInfo.id_token) {
+                    document.getElementById("status").innerText = "Kirjautuminen onnistui!";
+                    document.getElementById("apiArea").classList.remove("hidden");
+
+                    // Talletetaan token localStorageen -> helppo käyttää headerissa
+                    localStorage.setItem("id_token", tokenInfo.id_token);
+                } else {
+                    document.getElementById("status").innerText = "Virhe: ID Tokenia ei saatu.";
+                }
+            } catch (err) {
+                document.getElementById("status").innerText = "Virhe: " + err.message;
+            }
+        }
+
+        // ===== Backend helpers =====
+        const apiBase = "https://localhost:7233/api/products";
+
+        function authHeader() {
+            const token = localStorage.getItem("id_token");
+            return { "Authorization": `Bearer ${token}` };
+        }
+
+        async function loadProducts() {
+            try {
+                const res = await fetch(apiBase, { headers: authHeader() });
+                if (!res.ok) throw new Error(res.status + " " + res.statusText);
+
+                const products = await res.json();
+                const list = document.getElementById("productsList");
+                list.innerHTML = "";
+                products.forEach(p => {
+                    const li = document.createElement("li");
+                    li.textContent = `${p.name} — €${p.price}`;
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                alert("Virhe tuotteiden haussa: " + err.message);
+            }
+        }
+
+        async function addProduct() {
+            const name = document.getElementById("prodName").value.trim();
+            const price = parseFloat(document.getElementById("prodPrice").value);
+            if (!name || isNaN(price)) { alert("Syötä nimi ja hinta"); return; }
+
+            try {
+                const res = await fetch(apiBase, {
+                    method: "POST",
+                    headers: {
+                        ...authHeader(),
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name, price })
+                });
+                if (!res.ok) throw new Error(res.status + " " + res.statusText);
+
+                document.getElementById("prodName").value = "";
+                document.getElementById("prodPrice").value = "";
+                loadProducts(); // päivitä lista
+            } catch (err) {
+                alert("Virhe tuotteen tallennuksessa: " + err.message);
+            }
+        }
+
+        // ===== Event listeners =====
+        document.getElementById("loadBtn").addEventListener("click", loadProducts);
+        document.getElementById("addBtn").addEventListener("click", addProduct);
+
+        // ===== Entry point =====
+        const code = getQueryParam("code");
+        if (code) {
+            exchangeCodeForToken(code);
+        } else if (localStorage.getItem("id_token")) {
+            document.getElementById("status").innerText = "Kirjautuminen löytyi!";
+            document.getElementById("apiArea").classList.remove("hidden");
+        } else {
+            document.getElementById("status").innerText = "Virhe: OAuth-koodia ei löydy.";
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+@ProductsApi_HostAddress = https://localhost:7233/
+@token = // Paste your ID token here after login through the frontend
+
+### Get all products
+GET {{ProductsApi_HostAddress}}/api/products
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Create a new product
+POST {{ProductsApi_HostAddress}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Sample Product",
+    "price": 19.99
+}
+
+### Get weather forecast (test endpoint)
+GET {{ProductsApi_HostAddress}}/weatherforecast
+Accept: application/json

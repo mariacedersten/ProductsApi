@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Run API and Frontend",
+            "configurations": ["Launch API", "Launch Frontend"]
+        }
+    ],
+    "configurations": [
+        {
+            "name": "Launch API",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/ProductsApi/bin/Debug/net9.0/ProductsApi.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/ProductsApi",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "https://localhost:7233"
+            }
+        },
+        {
+            "name": "Launch Frontend",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/frontend/run_server.bat",
+            "cwd": "${workspaceFolder}/frontend",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+}
